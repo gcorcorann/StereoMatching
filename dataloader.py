@@ -5,6 +5,7 @@ import random
 import cv2
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
+from torch.utils.data.sampler import SubsetRandomSampler
 from torchvision import transforms
 
 class StereoDataset(Dataset):
@@ -76,16 +77,26 @@ class StereoDataset(Dataset):
 
         return left_padded, right_padded, int(d)
 
-def get_loader(data_path, receptive_size, cardinality, batch_size, 
+def get_loaders(data_path, receptive_size, cardinality, batch_size, 
         num_workers):
     #TODO test normalize transform
     # create dataset
     dataset = StereoDataset(data_path, receptive_size, cardinality)
-    dataset_size = len(dataset)
-    # create dataloader
-    dataloader = DataLoader(dataset, batch_size=batch_size,
-            num_workers=num_workers, shuffle=True)
-    return dataloader, dataset_size
+    # create random sampler
+    indices = np.arange(len(dataset))
+    np.random.shuffle(indices)
+    train, valid = indices[:160], indices[160:]
+    train_sampler = SubsetRandomSampler(train)
+    valid_sampler = SubsetRandomSampler(valid)
+    # create dataloaders
+    dataloaders = {
+            'train': DataLoader(dataset, batch_size=batch_size,
+                num_workers=num_workers, sampler=train_sampler),
+            'valid': DataLoader(dataset, batch_size=batch_size,
+                num_workers=num_workers, sampler=valid_sampler)
+            }
+    dataset_sizes = {'train': 160, 'valid': 34}
+    return dataloaders, dataset_sizes
 
 def test():
     """ Test Function. """
@@ -97,12 +108,17 @@ def test():
     max_disp = 128
     batch_size = 1
     num_workers = 0
-    dataloader, dataset_size = get_loader(data_path, receptive_size, max_disp, 
-            batch_size, num_workers)
+    dataloaders, dataset_sizes = get_loaders(data_path, receptive_size, 
+            max_disp, batch_size, num_workers)
 
-    print('Dataset Size:', dataset_size)
+    print('Dataset Sizes:', dataset_sizes)
     
-    for i, batch in enumerate(dataloader):
+    for i, batch in enumerate(dataloaders['train']):
+        left_patch, right_patch, d = batch
+        print(i, 'left_patch:', left_patch.shape, 'right_patch:',
+                right_patch.shape, 'disparity:', d)
+
+    for i, batch in enumerate(dataloaders['valid']):
         left_patch, right_patch, d = batch
         print(i, 'left_patch:', left_patch.shape, 'right_patch:',
                 right_patch.shape, 'disparity:', d)

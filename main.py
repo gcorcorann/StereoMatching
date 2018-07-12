@@ -2,7 +2,7 @@
 import torch
 import torch.nn as nn
 from network import SiameseNetwork
-from dataloader import get_loader
+from dataloader import get_loaders
 from trainer import train
 
 def main():
@@ -15,7 +15,7 @@ def main():
     num_workers = 0
     # training parameters
     learning_rate = 1e-2
-    max_epochs = 20
+    max_epochs = 2
     criterion = nn.CrossEntropyLoss()
 
     # create network
@@ -23,14 +23,14 @@ def main():
     print(net)
 
     # create dataloader
-    dataloader, dataset_size = get_loader(data_path, receptive_size, max_disp,
-            batch_size, num_workers)
+    dataloaders, dataset_sizes = get_loaders(data_path, receptive_size, 
+            max_disp, batch_size, num_workers)
     # create optimizer
     p = net.parameters()
     optimizer = torch.optim.Adagrad(p, learning_rate)
 
     # train the network
-    train(net, dataloader, dataset_size, criterion, optimizer, max_epochs)
+    train(net, dataloaders, dataset_sizes, criterion, optimizer, max_epochs)
 
 if __name__ == '__main__':
     main()
